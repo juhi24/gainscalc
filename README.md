@@ -1,0 +1,2 @@
+# gainscalc
+Gains calculation scripts
