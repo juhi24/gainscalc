@@ -36,33 +36,32 @@ def aca_coef(buydate, selldate):
 
 class FIFODeque:
     def __init__(self):
-        self._amounts = deque() # asset quantities
-        self._dates = deque() # receive dates
-        self._unitvalues = deque() # receive values
+        self._wallet = deque()
     
     def buy(self, date, amount, unitvalue):
-        self._dates.append(date)
-        self._amounts.append(amount)
-        self._unitvalues.append(unitvalue)
+        tx = dict(date=date, amount=amount, unitvalue=unitvalue)
+        self._wallet.append(tx)
 
     def sell(self, date, amount, value):
         tmp_amount = 0
         gain = 0
         while True:
-            buydate = self._dates.popleft()
-            tmp_amount += self._amounts.popleft()
-            buyvalue = self._unitvalues.popleft()
+            fi = self._wallet.popleft()
+            tmp_amount += fi['amount']
             if tmp_amount >= amount:
                 break
         back_amount = tmp_amount-amount
         if back_amount < 0:
             raise Exception('back_amount = {} < 0'.format(back_amount))
         elif back_amount > 0:
-            self._dates.appendleft(buydate)
-            self._amounts.appendleft(back_amount)
-            self._unitvalues.appendleft(buyvalue)
+            fi.update(amount=back_amount)
+            self._wallet.appendleft(fi)
         
         return gain
+
+    def to_dataframe(self):
+        df = pd.DataFrame(self._wallet)
+        return df.set_index('date')
 
 
 class FIFOtxs:
