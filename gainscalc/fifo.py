@@ -37,12 +37,23 @@ def aca_coef(buydate, selldate):
 class FIFODeque:
     def __init__(self):
         self._wallet = deque()
+        
+    def _chronology_check(self, date):
+        try:
+            last_date = self._wallet[-1]['date']
+        except IndexError:
+            return
+        if date < last_date:
+            efmt = 'Transaction {} is older than the latest {}'
+            raise ValueError(efmt.format(date, last_date))
     
     def buy(self, date, amount, unitvalue):
+        self._chronology_check(date)
         tx = dict(date=date, amount=amount, unitvalue=unitvalue)
         self._wallet.append(tx)
 
     def sell(self, date, amount, value):
+        self._chronology_check(date)
         tmp_amount = 0
         gain = 0
         while True:
@@ -50,6 +61,7 @@ class FIFODeque:
             tmp_amount += fi['amount']
             if tmp_amount >= amount:
                 break
+            gain += fi['amount']*fi['unitvalue']
         back_amount = tmp_amount-amount
         if back_amount < 0:
             raise Exception('back_amount = {} < 0'.format(back_amount))

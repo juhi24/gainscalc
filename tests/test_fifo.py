@@ -11,11 +11,21 @@ class TestFIFODeque(unittest.TestCase):
         self.deque.buy(datetime.datetime(2020, 1, 1), 2, 200)
         self.deque.buy(datetime.datetime(2020, 2, 1), 5, 220)
         self.deque.buy(datetime.datetime(2020, 4, 2), 3, 311)
-        
+
     def test_sell_more_than_first_buy(self):
         self.deque.sell(datetime.datetime(2020, 12, 1), 3, 814)
         self.assertEqual(self.deque._wallet[0]['amount'], 4)
-        
+        self.assertEqual(len(self.deque._wallet), 2)
+
+    def test_sell_more_than_2_first_buys(self):
+        self.deque.sell(datetime.datetime(2020, 12, 1), 8, 814)
+        self.assertEqual(self.deque._wallet[0]['amount'], 2)
+        self.assertEqual(len(self.deque._wallet), 1)
+
+    def test_enforce_chronology(self):
+        with self.assertRaises(ValueError):
+            self.deque.sell(datetime.datetime(2020, 1, 2), 8, 814)
+
 
 if __name__ == '__main__':
     unittest.main()
