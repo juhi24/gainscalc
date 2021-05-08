@@ -32,6 +32,14 @@ class TestFIFODeque(unittest.TestCase):
         self.assertEqual(gain1, 100)
         self.assertEqual(gain2, 240)
 
+    def test_aca(self):
+        gain1 = self.deque.sell(datetime.datetime(2020, 12, 1), 1, 2000)
+        gain2 = self.deque.sell(datetime.datetime(2030, 12, 1), 1, 2000)
+        gain3 = self.deque.sell(datetime.datetime(2031, 12, 1), 6, 2000)
+        self.assertAlmostEqual(gain1, 1600)
+        self.assertAlmostEqual(gain2, 1200)
+        self.assertAlmostEqual(gain3, 7200)
+
 
 if __name__ == '__main__':
     unittest.main()

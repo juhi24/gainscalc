@@ -35,6 +35,13 @@ def aca_coef(buydate, selldate):
     return ACA_COEF_LOW
 
 
+def aca_buyvalue(buyprice, sellprice, buydate, selldate):
+    """buyprice taking into account acquisition cost assumption where useful"""
+    c_aca = aca_coef(buydate, selldate)
+    buyprice_aca = c_aca*sellprice
+    return max(buyprice, buyprice_aca)
+
+
 class FIFODeque:
     def __init__(self):
         self._wallet = deque()
@@ -53,24 +60,25 @@ class FIFODeque:
         tx = dict(date=date, amount=amount, unitvalue=unitvalue)
         self._wallet.append(tx)
 
-    def sell(self, date, amount, value):
+    def sell(self, date, amount, unitvalue):
         self._chronology_check(date)
         tmp_amount = 0
         buyprice = 0
         while True:
             fi = self._wallet.popleft()
             tmp_amount += fi['amount']
+            buyunitvalue = aca_buyvalue(fi['unitvalue'], unitvalue, fi['date'], date)
             if tmp_amount >= amount:
                 break
-            buyprice += fi['amount']*fi['unitvalue']
+            buyprice += fi['amount']*buyunitvalue
         back_amount = tmp_amount-amount
-        buyprice += fi['unitvalue']*(fi['amount'] - back_amount)
+        buyprice += buyunitvalue*(fi['amount'] - back_amount)
         if back_amount < 0:
             raise Exception('back_amount = {} < 0'.format(back_amount))
         elif back_amount > 0:
             fi.update(amount=back_amount)
             self._wallet.appendleft(fi)
-        return amount*value - buyprice
+        return amount*unitvalue - buyprice
 
     def to_dataframe(self):
         df = pd.DataFrame(self._wallet)
