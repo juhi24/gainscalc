@@ -26,6 +26,12 @@ class TestFIFODeque(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.deque.sell(datetime.datetime(2020, 1, 2), 8, 814)
 
+    def test_gain(self):
+        gain1 = self.deque.sell(datetime.datetime(2020, 12, 1), 1, 300)
+        gain2 = self.deque.sell(datetime.datetime(2020, 12, 2), 2, 330)
+        self.assertEqual(gain1, 100)
+        self.assertEqual(gain2, 240)
+
 
 if __name__ == '__main__':
     unittest.main()
