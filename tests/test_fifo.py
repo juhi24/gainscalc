@@ -40,6 +40,10 @@ class TestFIFODeque(unittest.TestCase):
         self.assertAlmostEqual(gain2, 1200)
         self.assertAlmostEqual(gain3, 7200)
 
+    def test_extract(self):
+        out1 = list(self.deque.extract(2))
+        self.assertEqual(len(out1), 1)
+
 
 if __name__ == '__main__':
     unittest.main()

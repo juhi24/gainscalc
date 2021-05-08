@@ -29,6 +29,8 @@ def aca_buyvalue(buyprice, sellprice, buydate, selldate):
 
 
 class FIFODeque:
+    """a wallet/exchange model/calculator using the FIFO principle"""
+
     def __init__(self):
         self._wallet = deque()
 
@@ -58,15 +60,43 @@ class FIFODeque:
                 break
             buyprice += fi['amount']*buyunitvalue
         back_amount = tmp_amount-amount
-        buyprice += buyunitvalue*(fi['amount'] - back_amount)
+        fi_residual, _ = self._put_residual_back(back_amount, fi)
+        buyprice += buyunitvalue*(fi_residual['amount'] - back_amount)
+        return amount*unitvalue - buyprice
+
+    def _put_residual_back(self, back_amount, fi):
+        fi_spent = fi.copy()
+        fi_residual = fi.copy()
         if back_amount < 0:
             raise Exception('back_amount = {} < 0'.format(back_amount))
         elif back_amount > 0:
-            fi.update(amount=back_amount)
-            self._wallet.appendleft(fi)
-        return amount*unitvalue - buyprice
+            fi_residual.update(amount=back_amount)
+            fi_spent.update(amount=fi_spent['amount']-back_amount)
+            self._wallet.appendleft(fi_residual)
+        return fi_residual, fi_spent
 
     def to_dataframe(self):
         df = pd.DataFrame(self._wallet)
         return df.set_index('date')
+
+    def receive(self, tx_in):
+        for i, tx in enumerate(self._wallet):
+            if tx['date'] > tx_in['date']:
+                self._wallet.insert(i, tx_in)
+                break
+
+    def extract(self, amount):
+        tmp_amount = 0
+        while True:
+            fi = self._wallet.popleft()
+            tmp_amount += fi['amount']
+            if tmp_amount >= amount:
+                break
+            yield fi
+        back_amount = tmp_amount-amount
+        yield self._put_residual_back(back_amount, fi)[1]
+
+    def send(self, other, amount):
+        for tx in self.extract(amount):
+            other.receive(tx)
 
