@@ -8,6 +8,7 @@ from gainscalc import fifo
 class TestFIFODeque(unittest.TestCase):
     def setUp(self):
         self.deque = fifo.FIFODeque()
+        self.other = fifo.FIFODeque()
         self.deque.buy(datetime.datetime(2020, 1, 1), 2, 200)
         self.deque.buy(datetime.datetime(2020, 2, 1), 5, 220)
         self.deque.buy(datetime.datetime(2020, 4, 2), 3, 311)
@@ -43,6 +44,15 @@ class TestFIFODeque(unittest.TestCase):
     def test_extract(self):
         out1 = list(self.deque.extract(2))
         self.assertEqual(len(out1), 1)
+        self.assertEqual(out1[0]['unitvalue'], 200)
+        out2 = list(self.deque.extract(6))
+        self.assertEqual(len(out2), 2)
+        self.assertEqual(out2[1]['unitvalue'], 311)
+        self.assertEqual(out2[1]['amount'], 1)
+
+    def test_send_receive_full_tx(self):
+        self.deque.send(self.other, 2)
+        self.assertEqual(len(self.other._wallet), 1)
 
 
 if __name__ == '__main__':

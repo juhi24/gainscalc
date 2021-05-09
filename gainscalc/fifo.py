@@ -60,8 +60,8 @@ class FIFODeque:
                 break
             buyprice += fi['amount']*buyunitvalue
         back_amount = tmp_amount-amount
-        fi_residual, _ = self._put_residual_back(back_amount, fi)
-        buyprice += buyunitvalue*(fi_residual['amount'] - back_amount)
+        fi_spent = self._put_residual_back(back_amount, fi)
+        buyprice += buyunitvalue*fi_spent['amount']
         return amount*unitvalue - buyprice
 
     def _put_residual_back(self, back_amount, fi):
@@ -73,7 +73,7 @@ class FIFODeque:
             fi_residual.update(amount=back_amount)
             fi_spent.update(amount=fi_spent['amount']-back_amount)
             self._wallet.appendleft(fi_residual)
-        return fi_residual, fi_spent
+        return fi_spent
 
     def to_dataframe(self):
         df = pd.DataFrame(self._wallet)
@@ -83,7 +83,9 @@ class FIFODeque:
         for i, tx in enumerate(self._wallet):
             if tx['date'] > tx_in['date']:
                 self._wallet.insert(i, tx_in)
-                break
+                return
+        # wallet was empty
+        self._wallet.append(tx_in)
 
     def extract(self, amount):
         tmp_amount = 0
@@ -94,7 +96,7 @@ class FIFODeque:
                 break
             yield fi
         back_amount = tmp_amount-amount
-        yield self._put_residual_back(back_amount, fi)[1]
+        yield self._put_residual_back(back_amount, fi)
 
     def send(self, other, amount):
         for tx in self.extract(amount):
