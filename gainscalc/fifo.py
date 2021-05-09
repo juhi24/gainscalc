@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# coding: utf-8
 
 # builtin
 from collections import deque
