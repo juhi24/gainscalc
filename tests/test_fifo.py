@@ -53,6 +53,22 @@ class TestFIFODeque(unittest.TestCase):
     def test_send_receive_full_tx(self):
         self.deque.send(self.other, 2)
         self.assertEqual(len(self.other._wallet), 1)
+        self.assertEqual(self.deque._wallet[0]['unitvalue'], 220)
+        self.assertEqual(self.other._wallet[0]['unitvalue'], 200)
+        self.deque.send(self.other, 5)
+        self.assertEqual(self.other._wallet[1]['unitvalue'], 220)
+        # send 1st tx back
+        self.other.send(self.deque, 2)
+        self.assertEqual(self.deque._wallet[0]['unitvalue'], 200)
+
+    def test_send_receive_partial_tx(self):
+        self.deque.send(self.other, 1)
+        self.assertEqual(self.deque._wallet[0]['amount'], 1)
+        self.assertEqual(self.other._wallet[0]['amount'], 1)
+        self.assertEqual(self.deque._wallet[0]['unitvalue'], 200)
+        self.assertEqual(self.other._wallet[0]['unitvalue'], 200)
+        self.deque.send(self.other, 4)
+        self.assertEqual(self.other._wallet[-1]['amount'], 3)
 
 
 if __name__ == '__main__':

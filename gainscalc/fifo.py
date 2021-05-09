@@ -84,7 +84,6 @@ class FIFODeque:
             if tx['date'] > tx_in['date']:
                 self._wallet.insert(i, tx_in)
                 return
-        # wallet was empty
         self._wallet.append(tx_in)
 
     def extract(self, amount):
