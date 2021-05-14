@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 import math
 
@@ -11,15 +10,18 @@ TX_TYPES = {'Pikaosto': 'buy',
             'Holvi-talletus': 'stash',
             'Holvi-nosto': 'unstash',
             'Palkkio': 'receive',
-            'Lähetetty maksu': 'spend'}
+            'Lähetetty maksu': 'spend',
+            'Vastaanotettu maksu': 'receive'}
 
 
-def read_coinmotion(csv, year=0, asset='BTC'):
-    df = pd.read_csv(csv, parse_dates=['Date'])
+def read_coinmotion(csv, year=0, until=None, asset='BTC'):
+    df = pd.read_csv(csv, parse_dates=['Date'], dayfirst=True)
     #df = df[df.Account.apply(lambda x: x in [asset, 'EUR'])]
     df = df[df.Status=='Valmis']
     if year:
         df = df[df.Date.apply(lambda t: t.year==year)]
+    if until:
+        df = df[df.Date<=until]
     return df
 
 
@@ -46,11 +48,3 @@ def rate(ratestr):
     return float(ratestr.split(' €')[0])
 
 
-if __name__ == '__main__':
-    cm_csv = '/home/jussi24/Asiakirjat/talous/coinmotion_balances-20210424-182437.csv'
-    df = read_coinmotion(cm_csv, year=2020)
-    df['txtype'] = df.Type.apply(txtype)
-    df['unitvalue'] = df.Rate.apply(rate)
-    df = df[df.txtype != 'irrelevant']
-    df_btc = drop_asset(df, 'ETH')
-    df_btc = drop_asset(df_btc, 'LTC')
