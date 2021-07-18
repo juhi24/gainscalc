@@ -6,6 +6,13 @@ STASH_TYPES = {'Withdrawal': 'stash',
                'Deposit': 'unstash'}
 
 
+def parse_unit(x):
+    try:
+        return x.split(' ')[1]
+    except AttributeError:
+        return
+
+
 def parse_float(x):
     try:
         return float(x.split(' ')[0])
@@ -29,11 +36,10 @@ def read_bitstamp(csv):
     df['amount'] = df.Amount.apply(parse_float)
     df['fee'] = df.Fee.apply(parse_float)
     df['unitvalue'] = df.Rate.apply(parse_float)
-    df['asset'] = df.Amount.apply(lambda x: x.split(' ')[1])
+    df['asset'] = df.Amount.apply(parse_unit)
+    df['currency'] = df.Value.apply(parse_unit)
     df['type'] = df.apply(parse_type, axis=1)
     return df
 
 
-if __name__ == '__main__':
-    df = read_bitstamp(csv)
 
