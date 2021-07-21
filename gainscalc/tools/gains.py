@@ -66,4 +66,5 @@ if __name__ == '__main__':
     btcusd = Pair('BTC', 'USD')
     ethusd = Pair('ETH', 'USD')
     main(df, [btcusd, ethusd])
+    btcreport20 = select_year(btcusd.xc.book, 2020, datecol='selldate')
     btcfee20 = select_year(df, 2020, datecol='Datetime').fee

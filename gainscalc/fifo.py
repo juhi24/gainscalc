@@ -33,6 +33,10 @@ class FIFODeque:
 
     def __init__(self):
         self._wallet = deque()
+        cols = ['buydate', 'selldate', 'buyvalue', 'sellvalue']
+        self.book = pd.DataFrame(columns=cols)
+        self._buys = pd.Series(name='buyvalue')
+        self._sales = pd.Series(name='sellvalue')
 
     def _chronology_check(self, date):
         try:
@@ -48,6 +52,11 @@ class FIFODeque:
         tx = dict(date=date, amount=amount, unitvalue=unitvalue)
         self._wallet.append(tx)
 
+    def _appendbook(self, buydate, selldate, buyvalue, sellvalue):
+        newvals = dict(buydate=buydate, selldate=selldate,
+                       buyvalue=buyvalue, sellvalue=sellvalue)
+        self.book = self.book.append(newvals, ignore_index=True)
+
     def sell(self, date, amount, unitvalue):
         self._chronology_check(date)
         tmp_amount = 0
@@ -58,10 +67,16 @@ class FIFODeque:
             buyunitvalue = aca_buyvalue(fi['unitvalue'], unitvalue, fi['date'], date)
             if tmp_amount >= amount:
                 break
-            buyprice += fi['amount']*buyunitvalue
+            sellvalue = fi['amount']*unitvalue
+            buyvalue = fi['amount']*buyunitvalue
+            self._appendbook(fi['date'], date, buyvalue, sellvalue)
+            buyprice += buyvalue
         back_amount = tmp_amount-amount
         fi_spent = self._put_residual_back(back_amount, fi)
-        buyprice += buyunitvalue*fi_spent['amount']
+        buyvalue = buyunitvalue*fi_spent['amount']
+        sellvalue = unitvalue*fi_spent['amount']
+        self._appendbook(fi_spent['date'], date, buyvalue, sellvalue)
+        buyprice += buyvalue
         return amount*unitvalue - buyprice
 
     def _put_residual_back(self, back_amount, fi):
