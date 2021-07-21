@@ -70,9 +70,16 @@ if __name__ == '__main__':
     btcusd = Pair('BTC', 'USD')
     ethusd = Pair('ETH', 'USD')
     main(df, [btcusd, ethusd])
+    dateformatter = lambda t: t.strftime('%Y-%d-%m %H:%M')
+    header = ['ostohetki', 'myyntihetki', 'määrä',
+              'ostohinta ($)', 'myyntihinta ($)',
+              'ostohinta (€)', 'myyntihinta (€)']
+    formatters = dict(buydate=dateformatter, selldate=dateformatter)
     for key, pair in dict(btc=btcusd, eth=ethusd).items():
         report20 = select_year(pair.xc.book, 2020, datecol='selldate')
         report20 = convertbook(report20, 'EUR=X')
         tabfile = os.path.join(outdir, '{}.tex'.format(key))
-        report20.to_latex(tabfile, index=False)
+        report20.to_latex(tabfile, index=False, formatters=formatters,
+                          header=header, label='tab:'+key,
+                          caption=key.upper()+' osto ja myyntihinnat. Hinnat ovat kokonaishintoja.')
     btcfee20 = select_year(df, 2020, datecol='Datetime').fee
