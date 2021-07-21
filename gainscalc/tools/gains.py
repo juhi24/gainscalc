@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
+import os
 import datetime
 
 import pandas as pd
 
 from gainscalc.tools.bstamp import read_bitstamp
 from gainscalc.fifo import FIFODeque
+from gainscalc.rates import convertbook
 
 
 def select_year(df, year, datecol='date'):
@@ -63,8 +65,14 @@ def main(df, pairs):
 
 if __name__ == '__main__':
     df = read_bitstamp(csv)
+    outdir = '/tmp/report'
+    os.makedirs(outdir, exist_ok=True)
     btcusd = Pair('BTC', 'USD')
     ethusd = Pair('ETH', 'USD')
     main(df, [btcusd, ethusd])
-    btcreport20 = select_year(btcusd.xc.book, 2020, datecol='selldate')
+    for key, pair in dict(btc=btcusd, eth=ethusd).items():
+        report20 = select_year(pair.xc.book, 2020, datecol='selldate')
+        report20 = convertbook(report20, 'EUR=X')
+        tabfile = os.path.join(outdir, '{}.tex'.format(key))
+        report20.to_latex(tabfile, index=False)
     btcfee20 = select_year(df, 2020, datecol='Datetime').fee
