@@ -28,10 +28,6 @@ class Pair:
         self.stash = FIFODeque()
         self.asset = asset
         self.currency = currency
-        if asset=='ETH':
-            self.xc.buy(df.iloc[0].Datetime, 8, 1) # prevent emptying
-        else:
-            self.xc.buy(df.iloc[0].Datetime, 0.0001, 1) # prevent emptying
         self.gains = []
 
     def gains_df(self, year=2020):
@@ -46,11 +42,11 @@ def main(df, pairs):
         xc = pair.xc
         stash = pair.stash
         if row.type == 'buy':
-            xc.buy(row.Datetime, row.amount, row.unitvalue)
+            xc.buy(row.date, row.amount, row.unitvalue)
         if row.type == 'sell':
             try:
-                gain = xc.sell(row.Datetime, row.amount, row.unitvalue)
-                pair.gains.append(dict(date=row.Datetime, value=gain))
+                gain = xc.sell(row.date, row.amount, row.unitvalue)
+                pair.gains.append(dict(date=row.date, value=gain))
             except IndexError as e:
                 print(pair.asset)
                 print(e)

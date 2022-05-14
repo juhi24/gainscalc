@@ -1,5 +1,7 @@
 import pandas as pd
 
+from gainscalc.tools import parse_float
+
 TX_TYPES = {'Withdrawal': 'spend',
             'Deposit': 'receive'}
 STASH_TYPES = {'Withdrawal': 'stash',
@@ -11,13 +13,6 @@ def parse_unit(x):
         return x.split(' ')[1]
     except AttributeError:
         return
-
-
-def parse_float(x):
-    try:
-        return float(x.split(' ')[0])
-    except AttributeError: # it was nan
-        return 0
 
 
 def parse_type(row):
