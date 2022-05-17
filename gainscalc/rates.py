@@ -7,6 +7,18 @@ import os
 import pandas as pd
 
 
+def dfrowconvert(row, target):
+    if row.currency is None or row.currency==target:
+        return row
+    out = row.copy()
+    pair = '{}-{}'.format(row.asset, target)
+    feepair = '{}-{}'.format(row.currency, target)
+    out.unitvalue = rate(row.date, pair)
+    out.fee = rate(row.date, feepair)*row.fee
+    out.currency = target
+    return out
+
+
 def yearpath(year, pair, datadir='/tmp'):
     fmt = '{pair}{year}.pkl'
     pr = pair.lower().split('=')[0]

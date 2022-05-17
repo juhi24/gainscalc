@@ -23,6 +23,9 @@ def read_coinmotion(csv, year=0, until=None, asset='BTC'):
     df['currency'] = 'EUR'
     df['amount'] = df.Amount.apply(parse_float).apply(abs)
     df.rename(columns={'Account': 'asset', 'Date': 'date'}, inplace=True)
+    df['type'] = df.Type.apply(txtype)
+    df['unitvalue'] = df.Rate.apply(rate)
+    df = df[df.type != 'irrelevant']
     if year:
         df = df[df.date.apply(lambda t: t.year==year)]
     if until:
