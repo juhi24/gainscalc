@@ -1,3 +1,24 @@
 [build-system]
-requires = ["setuptools>=42"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gainscalc"
+dynamic = ["version"]
+dependencies = [
+    "click",
+    "pandas",
+    "yfinance",
+]
+
+[project.scripts]
+ethexport = "gainscalc.ethscan:main"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/gainscalc/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gainscalc"]
