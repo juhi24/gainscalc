@@ -7,6 +7,7 @@ Covers:
   * gains.main()  -- end-to-end pipeline test
 """
 
+import io
 import math
 import os
 import unittest
@@ -343,6 +344,61 @@ class TestGainsPipeline(unittest.TestCase):
         gain = gains_2018.iloc[0]["value"]
         raw_gain = 3799.05 - 385.28   # if actual cost were used for full lot
         self.assertLess(gain, raw_gain)
+
+
+# ---------------------------------------------------------------------------
+# Supplement override tests
+# ---------------------------------------------------------------------------
+
+class TestSupplementOverride(unittest.TestCase):
+    """read_coinmotion() supplement parameter overrides deposit cost basis."""
+
+    # Minimal CM-format CSV with a single BTC deposit at market rate 385.28
+    _CM_CSV = """\
+fromCurrency,toCurrency,type,eurAmount,cryptoAmount,rate,fee,feeCurrency,time
+BTC,BTC,deposit,,1.0,385.28,0.0,BTC,2016-03-04T15:26:02+02:00
+"""
+
+    def _supplement_csv(self, actual_buy_date="", actual_unitvalue=""):
+        return (
+            "deposit_date,asset,amount,cm_rate,actual_buy_date,actual_unitvalue\n"
+            f"2016-03-04 13:26:02,BTC,1.0,385.28,{actual_buy_date},{actual_unitvalue}\n"
+        )
+
+    def _read(self, supplement_text=None):
+        cm_file = io.StringIO(self._CM_CSV)
+        if supplement_text is None:
+            return read_coinmotion(cm_file)
+        supp_file = io.StringIO(supplement_text)
+        return read_coinmotion(cm_file, supplement=supp_file)
+
+    def test_no_supplement_uses_cm_rate(self):
+        df = self._read()
+        self.assertAlmostEqual(df.iloc[0]["unitvalue"], 385.28)
+
+    def test_supplement_blank_fields_no_change(self):
+        """Blank actual_unitvalue → cm_rate is kept."""
+        df = self._read(self._supplement_csv())
+        self.assertAlmostEqual(df.iloc[0]["unitvalue"], 385.28)
+
+    def test_supplement_overrides_unitvalue(self):
+        """actual_unitvalue provided → cost basis is replaced."""
+        df = self._read(self._supplement_csv(actual_unitvalue="300.00"))
+        self.assertAlmostEqual(df.iloc[0]["unitvalue"], 300.00)
+
+    def test_supplement_overrides_buy_date(self):
+        """actual_buy_date provided → date is replaced (and row still present)."""
+        df = self._read(self._supplement_csv(actual_buy_date="2015-06-01"))
+        self.assertEqual(df.iloc[0]["date"].year, 2015)
+
+    def test_supplement_unmatched_row_no_effect(self):
+        """A supplement with no matching deposit date is silently ignored."""
+        supp = (
+            "deposit_date,asset,amount,cm_rate,actual_buy_date,actual_unitvalue\n"
+            "2020-01-01 00:00:00,BTC,1.0,9000.0,2019-01-01,8000.0\n"
+        )
+        df = self._read(supp)
+        self.assertAlmostEqual(df.iloc[0]["unitvalue"], 385.28)
 
 
 if __name__ == "__main__":
