@@ -45,7 +45,7 @@ def main(df, pairs):
         stash = pair.stash
         if row.type == 'buy':
             xc.buy(row.date, row.amount, row.unitvalue)
-        if row.type == 'sell':
+        elif row.type == 'sell':
             try:
                 gain = xc.sell(row.date, row.amount, row.unitvalue)
                 pair.gains.append(dict(date=row.date, value=gain))
@@ -53,9 +53,18 @@ def main(df, pairs):
                 print(pair.asset)
                 print(e)
                 continue
-        if row.type == 'stash':
+        elif row.type == 'spend':
+            # Transfer out (own-wallet or withdrawal): not a taxable event,
+            # but removes the coins from this wallet's FIFO.
+            try:
+                list(xc.extract(row.amount))
+            except IndexError as e:
+                print(pair.asset)
+                print(e)
+                continue
+        elif row.type == 'stash':
             xc.send(stash, row.amount)
-        if row.type == 'unstash':
+        elif row.type == 'unstash':
             stash.send(xc, row.amount)
 
 

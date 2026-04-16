@@ -53,7 +53,8 @@ class FIFODeque:
     def _appendbook(self, buydate, selldate, buyvalue, sellvalue, amount):
         newvals = dict(buydate=buydate, selldate=selldate,
                        buyvalue=buyvalue, sellvalue=sellvalue, amount=amount)
-        self.book = self.book.append(newvals, ignore_index=True)
+        new_row = pd.DataFrame([newvals])
+        self.book = pd.concat([self.book, new_row], ignore_index=True)
 
     def sell(self, date, amount, unitvalue):
         self._chronology_check(date)

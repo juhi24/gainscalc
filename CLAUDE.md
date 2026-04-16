@@ -8,6 +8,8 @@ gainscalc is a FIFO engine and tax reporting tool for calculating capital gains 
 
 ## Commands
 
+Use the virtualenv in `~/.virtualenvs/gainscalc/`.
+
 **Install for development:**
 ```bash
 pip install -e .
