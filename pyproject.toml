@@ -12,11 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ethexport     = "gainscalc.ethscan:main"
-cmgains       = "gainscalc.tools.cmgains:main"
-deposit-form  = "gainscalc.tools.deposit_form:main"
-transfer-form = "gainscalc.tools.deposit_form:transfer_main"
-gains         = "gainscalc.tools.gains_cli:main"
+gains = "gainscalc.tools.gains_cli:gains"
 
 [tool.hatch.version]
 source = "vcs"
