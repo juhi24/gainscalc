@@ -22,29 +22,7 @@ EUR-only rows            : ignored
 
 import pandas as pd
 
-
-def _load_supplement(supplement_path):
-    """Load a filled-in deposit supplement CSV into a lookup dict.
-
-    Returns a dict keyed by (deposit_date: Timestamp, asset: str) with values
-    (actual_buy_date: Timestamp|None, actual_unitvalue: float|None).
-
-    If two rows share the same (date, asset), the last one wins — in practice
-    each deposit timestamp is unique.
-    """
-    df = pd.read_csv(supplement_path)
-    df["deposit_date"] = pd.to_datetime(df["deposit_date"], utc=False)
-    lookup = {}
-    for _, row in df.iterrows():
-        key = (row["deposit_date"], row["asset"])
-        buy_date = None
-        if pd.notna(row.get("actual_buy_date")) and str(row["actual_buy_date"]).strip():
-            buy_date = pd.to_datetime(row["actual_buy_date"])
-        unitvalue = None
-        if pd.notna(row.get("actual_unitvalue")) and str(row["actual_unitvalue"]).strip():
-            unitvalue = float(row["actual_unitvalue"])
-        lookup[key] = (buy_date, unitvalue)
-    return lookup
+from gainscalc.tools import supplement as supp_mod
 
 
 def _is_crypto(currency):
@@ -117,7 +95,7 @@ def read_coinmotion(csv, year=0, until=None, supplement=None):
     """Read a Coinmotion transaction statement CSV.
 
     Returns a DataFrame with columns:
-      date, asset, currency, type, amount, unitvalue
+      date, asset, currency, type, amount, unitvalue, source
     sorted chronologically (oldest first).
 
     Parameters
@@ -125,13 +103,10 @@ def read_coinmotion(csv, year=0, until=None, supplement=None):
     csv        : path or file-like
     year       : int -- if non-zero, keep only rows from that calendar year
     until      : datetime -- if given, keep only rows on or before this date
-    supplement : path -- optional filled-in deposit cost-basis CSV produced by
-                 the ``deposit-form`` command.  For each matching deposit /
-                 account_transfer_in row the actual acquisition date and/or
-                 unit value overrides the CM market rate.
+    supplement : path or file-like -- optional filled-in deposit cost-basis CSV
+                 (produced by ``deposit-form`` or ``transfer-form``).
+                 Applied via the shared supplement module.
     """
-    supp = _load_supplement(supplement) if supplement is not None else {}
-
     df = pd.read_csv(csv)
     # Parse ISO-8601 timestamps with tz offset, convert to UTC-naive datetime
     df["time"] = pd.to_datetime(df["time"], utc=True).dt.tz_localize(None)
@@ -141,32 +116,24 @@ def read_coinmotion(csv, year=0, until=None, supplement=None):
         tx_type, asset, amount, unitvalue = _parse_row(row)
         if tx_type == "irrelevant":
             continue
-
-        tx_date = row["time"]
-
-        # Apply supplement overrides for deposit / account_transfer_in rows.
-        if supp and row["type"] in ("deposit", "account_transfer_in") and tx_type == "buy":
-            key = (tx_date, asset)
-            if key in supp:
-                actual_date, actual_uv = supp[key]
-                if actual_date is not None:
-                    tx_date = actual_date
-                if actual_uv is not None:
-                    unitvalue = actual_uv
-
         rows.append(
             {
-                "date": tx_date,
+                "date": row["time"],
                 "asset": asset,
                 "currency": "EUR",
                 "type": tx_type,
                 "amount": amount,
                 "unitvalue": unitvalue,
+                "source": "coinmotion",
             }
         )
 
-    cols = ["date", "asset", "currency", "type", "amount", "unitvalue"]
+    cols = ["date", "asset", "currency", "type", "amount", "unitvalue", "source"]
     result = pd.DataFrame(rows, columns=cols).sort_values("date", kind="stable")
+
+    if supplement is not None:
+        loaded = supp_mod.load_supplement(supplement)
+        result = supp_mod.apply_supplement(result, loaded)
 
     if year and not result.empty:
         result = result[result["date"].dt.year == year]

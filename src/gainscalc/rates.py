@@ -25,12 +25,21 @@ def yearpath(year, pair, datadir='/tmp'):
     return os.path.join(datadir, fmt.format(pair=pr, year=year))
 
 
+def _flatten_columns(data):
+    """Flatten MultiIndex columns returned by newer yfinance versions."""
+    if isinstance(data.columns, pd.MultiIndex):
+        data = data.copy()
+        data.columns = data.columns.get_level_values(0)
+    return data
+
+
 def download(year, pair='ETH-EUR', **kws):
     import yfinance as yf
     outfile = yearpath(year, pair, **kws)
     data = yf.download(pair,
                        start='{}-01-01'.format(year),
                        end='{}-01-01'.format(year+1), interval='1d')
+    data = _flatten_columns(data)
     data = data.asfreq('1d').interpolate()
     data.to_pickle(outfile)
 
@@ -38,13 +47,26 @@ def download(year, pair='ETH-EUR', **kws):
 def load(year, pair='ETH-EUR', **kws):
     filepath = yearpath(year, pair, **kws)
     if not os.path.isfile(filepath):
-        download(year, pair)
-    return pd.read_pickle(filepath)
+        download(year, pair, **kws)
+    data = _flatten_columns(pd.read_pickle(filepath))
+    if data.empty:
+        # Stale or failed download — delete and retry once.
+        os.remove(filepath)
+        download(year, pair, **kws)
+        data = _flatten_columns(pd.read_pickle(filepath))
+    return data
 
 
 def rate(timestamp, pair, field='Open'):
-    data = load(timestamp.year, pair=pair)['Open']
-    return data.loc[timestamp.date():timestamp.date()].iloc[0]
+    data = load(timestamp.year, pair=pair)
+    col = data[field]
+    result = col.loc[timestamp.date():timestamp.date()]
+    if result.empty:
+        raise ValueError(
+            f"No rate data for {pair} on {timestamp.date()} "
+            f"(year {timestamp.year} unavailable from Yahoo Finance)"
+        )
+    return result.iloc[0]
 
 
 def _rowconvert(row, prefix='sell', **kws):
