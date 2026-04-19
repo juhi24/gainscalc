@@ -8,7 +8,7 @@ dynamic = ["version"]
 dependencies = [
     "click",
     "pandas",
-    "yfinance",
+    "requests",
 ]
 
 [project.scripts]
