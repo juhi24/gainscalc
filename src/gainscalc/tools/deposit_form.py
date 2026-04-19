@@ -95,18 +95,27 @@ def generate_combined_form(df: pd.DataFrame, transfers=None) -> pd.DataFrame:
     and let the user skip lines that don't need overrides.
     """
     transfer_notes = {}
+    transfer_prefill = {}
     if transfers:
         for t in transfers:
             transfer_notes[t["buy_idx"]] = (
                 f"likely transfer from {t['source_spend']} "
                 f"({t['spend_date'].date()} {t['spend_amount']:.8g} {t['asset']})"
             )
+            # Prefill with the spend-side date and market rate so the user has a
+            # reasonable starting point without manual look-up.
+            spend_row = df.loc[t["spend_idx"]]
+            transfer_prefill[t["buy_idx"]] = {
+                "actual_buy_date": t["spend_date"],
+                "actual_unitvalue": spend_row["unitvalue"],
+            }
 
     mask = df["type"] == "buy"
     if "subtype" in df.columns:
         mask = mask & (df["subtype"] == "deposit")
     rows = []
     for idx, row in df[mask].iterrows():
+        prefill = transfer_prefill.get(idx, {})
         rows.append(
             {
                 "source": row.get("source", ""),
@@ -114,8 +123,8 @@ def generate_combined_form(df: pd.DataFrame, transfers=None) -> pd.DataFrame:
                 "asset": row["asset"],
                 "amount": row["amount"],
                 "source_rate": row["unitvalue"],
-                "actual_buy_date": "",
-                "actual_unitvalue": "",
+                "actual_buy_date": prefill.get("actual_buy_date", ""),
+                "actual_unitvalue": prefill.get("actual_unitvalue", ""),
                 "transfer_note": transfer_notes.get(idx, ""),
             }
         )
