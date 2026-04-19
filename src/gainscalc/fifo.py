@@ -8,6 +8,12 @@ import datetime
 import pandas as pd
 
 
+# Tolerance for floating-point residuals in lot amounts after partial sells.
+# Residuals from _put_residual_back can be off by ~1e-14 due to IEEE 754
+# arithmetic, causing a subsequent sell of an equal amount to under-count
+# tmp_amount and try to popleft() from an empty deque.
+_AMOUNT_EPSILON = 1e-9
+
 # acquisition cost assumption
 ACA_COEF_LOW = 0.2
 ACA_COEF_HIGH = 0.4
@@ -64,13 +70,13 @@ class FIFODeque:
             fi = self._wallet.popleft()
             tmp_amount += fi['amount']
             buyunitvalue = aca_buyvalue(fi['unitvalue'], unitvalue, fi['date'], date)
-            if tmp_amount >= amount:
+            if tmp_amount >= amount - _AMOUNT_EPSILON:
                 break
             sellvalue = fi['amount']*unitvalue
             buyvalue = fi['amount']*buyunitvalue
             self._appendbook(fi['date'], date, buyvalue, sellvalue, fi['amount'])
             buyprice += buyvalue
-        back_amount = tmp_amount-amount
+        back_amount = max(0.0, tmp_amount - amount)
         fi_spent = self._put_residual_back(back_amount, fi)
         buyvalue = buyunitvalue*fi_spent['amount']
         sellvalue = unitvalue*fi_spent['amount']
@@ -105,10 +111,10 @@ class FIFODeque:
         while True:
             fi = self._wallet.popleft()
             tmp_amount += fi['amount']
-            if tmp_amount >= amount:
+            if tmp_amount >= amount - _AMOUNT_EPSILON:
                 break
             yield fi
-        back_amount = tmp_amount-amount
+        back_amount = max(0.0, tmp_amount - amount)
         yield self._put_residual_back(back_amount, fi)
 
     def send(self, other, amount):
