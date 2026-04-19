@@ -57,6 +57,15 @@ def _write_book(pairs, year, output_path):
         frames.append(year_book)
     if frames:
         combined = pd.concat(frames, ignore_index=True)
+        combined["amount"] = combined["amount"].astype(float).apply(
+            lambda x: f"{x:.8f}"
+        )
+        combined["buyvalue"] = combined["buyvalue"].astype(float).apply(
+            lambda x: f"{x:.2f}"
+        )
+        combined["sellvalue"] = combined["sellvalue"].astype(float).apply(
+            lambda x: f"{x:.2f}"
+        )
         combined.to_csv(output_path, index=False)
         click.echo(f"Wrote lot detail ({len(combined)} rows) to {output_path}", err=True)
     else:
