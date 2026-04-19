@@ -51,7 +51,7 @@ class TestParseRow(unittest.TestCase):
         """EUR->BTC: type=buy, asset=BTC, unitvalue=eurAmount/crypto."""
         row = _row("market_trade", "EUR", "BTC",
                    eur=100.80, crypto=0.01, rate=10000.0, fee=0.80)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "buy")
         self.assertEqual(asset, "BTC")
         self.assertAlmostEqual(amount, 0.01)
@@ -62,7 +62,7 @@ class TestParseRow(unittest.TestCase):
         """BTC->EUR: type=sell, unitvalue=eurAmount/crypto (net proceeds)."""
         row = _row("market_trade", "BTC", "EUR",
                    eur=9920.0, crypto=1.0, rate=10000.0, fee=80.0)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "sell")
         self.assertEqual(asset, "BTC")
         self.assertAlmostEqual(amount, 1.0)
@@ -72,7 +72,7 @@ class TestParseRow(unittest.TestCase):
     def test_buy_eur_to_eth_limit(self):
         row = _row("market_trade_limit", "EUR", "ETH",
                    eur=201.5, crypto=1.0, rate=200.0, fee=1.5)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "buy")
         self.assertEqual(asset, "ETH")
         self.assertAlmostEqual(uv, 201.5)
@@ -88,7 +88,7 @@ class TestParseRow(unittest.TestCase):
 
     def test_deposit_crypto_is_buy(self):
         row = _row("deposit", "BTC", "BTC", crypto=1.0, rate=5000.0)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "buy")
         self.assertEqual(asset, "BTC")
         self.assertAlmostEqual(amount, 1.0)
@@ -103,7 +103,7 @@ class TestParseRow(unittest.TestCase):
         """Net sent = cryptoAmount - fee (network fee consumed separately)."""
         row = _row("withdrawal", "BTC", "BTC",
                    crypto=1.0005, rate=50000.0, fee=0.0005, fee_cur="BTC")
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "spend")
         self.assertEqual(asset, "BTC")
         self.assertAlmostEqual(amount, 1.0)
@@ -118,7 +118,7 @@ class TestParseRow(unittest.TestCase):
     def test_referral_reward_crypto_is_buy(self):
         """Crypto rewards add to FIFO with market-rate cost basis."""
         row = _row("referral_reward", "BTC", "BTC", crypto=0.01, rate=8000.0)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "buy")
         self.assertEqual(asset, "BTC")
         self.assertAlmostEqual(amount, 0.01)
@@ -134,7 +134,7 @@ class TestParseRow(unittest.TestCase):
     def test_account_transfer_in_is_buy(self):
         row = _row("account_transfer_in", "BTC", "BTC",
                    crypto=0.5, rate=30000.0)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "buy")
         self.assertEqual(asset, "BTC")
         self.assertAlmostEqual(amount, 0.5)
@@ -142,7 +142,7 @@ class TestParseRow(unittest.TestCase):
     def test_account_transfer_out_net_amount(self):
         row = _row("account_transfer_out", "BTC", "BTC",
                    crypto=2.0001, rate=40000.0, fee=0.0001, fee_cur="BTC")
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "spend")
         self.assertAlmostEqual(amount, 2.0)
 
@@ -151,20 +151,20 @@ class TestParseRow(unittest.TestCase):
     def test_vault_deposit_stash_net_amount(self):
         row = _row("vault_deposit", "BTC", "BTC",
                    crypto=10.0002, rate=5000.0, fee=0.0002, fee_cur="BTC")
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "stash")
         self.assertAlmostEqual(amount, 10.0)
 
     def test_vault_withdrawal_is_unstash(self):
         row = _row("vault_withdrawal", "BTC", "BTC", crypto=10.0, rate=8000.0)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "unstash")
         self.assertAlmostEqual(amount, 10.0)
 
     def test_vault_fee_is_taxable_sell(self):
         """Vault fee = disposal of crypto at market rate (Finnish tax rules)."""
         row = _row("vault_fee", "BTC", "BTC", crypto=0.0001, rate=50000.0)
-        tx, asset, amount, uv = _parse_row(row)
+        tx, asset, amount, uv, _ = _parse_row(row)
         self.assertEqual(tx, "sell")
         self.assertEqual(asset, "BTC")
         self.assertAlmostEqual(amount, 0.0001)

@@ -30,7 +30,7 @@ def _is_crypto(currency):
 
 
 def _parse_row(row):
-    """Return (type, asset, amount, unitvalue) or ('irrelevant', ...)."""
+    """Return (type, asset, amount, unitvalue, subtype) or ('irrelevant', ...)."""
     t = row["type"]
     fc = row["fromCurrency"]
     tc = row["toCurrency"]
@@ -48,47 +48,47 @@ def _parse_row(row):
             # EUR->crypto buy.  eurAmount already includes the exchange fee,
             # so unitvalue = total cost per unit (Finnish tax: fee added to basis).
             uv = eur / crypto if crypto > 0 else rate
-            return "buy", tc, crypto, uv
+            return "buy", tc, crypto, uv, "trade"
         if _is_crypto(fc) and tc == "EUR":
             # crypto->EUR sell.  eurAmount is net proceeds after the fee,
             # so unitvalue = net proceeds per unit (fee already deducted).
             uv = eur / crypto if crypto > 0 else rate
-            return "sell", fc, crypto, uv
+            return "sell", fc, crypto, uv, "trade"
         # crypto->crypto swap: not yet modelled
-        return "irrelevant", None, None, None
+        return "irrelevant", None, None, None, None
 
     if t == "deposit":
         if _is_crypto(fc):
-            return "buy", fc, crypto, rate
-        return "irrelevant", None, None, None
+            return "buy", fc, crypto, rate, "deposit"
+        return "irrelevant", None, None, None, None
 
     if t == "withdrawal":
         if _is_crypto(fc):
-            return "spend", fc, crypto - fee, rate
-        return "irrelevant", None, None, None
+            return "spend", fc, crypto - fee, rate, "deposit"
+        return "irrelevant", None, None, None, None
 
     if t == "referral_reward":
         if _is_crypto(tc):
-            return "buy", tc, crypto, rate
-        return "irrelevant", None, None, None
+            return "buy", tc, crypto, rate, "deposit"
+        return "irrelevant", None, None, None, None
 
     if t == "account_transfer_in":
-        return "buy", fc, crypto, rate
+        return "buy", fc, crypto, rate, "deposit"
 
     if t == "account_transfer_out":
-        return "spend", fc, crypto - fee, rate
+        return "spend", fc, crypto - fee, rate, "deposit"
 
     if t == "vault_deposit":
-        return "stash", fc, crypto - fee, rate
+        return "stash", fc, crypto - fee, rate, "deposit"
 
     if t == "vault_withdrawal":
-        return "unstash", fc, crypto, rate
+        return "unstash", fc, crypto, rate, "deposit"
 
     if t == "vault_fee":
         # Monthly vault fee: disposal of crypto at market rate -- taxable event.
-        return "sell", fc, crypto, rate
+        return "sell", fc, crypto, rate, "trade"
 
-    return "irrelevant", None, None, None
+    return "irrelevant", None, None, None, None
 
 
 def read_coinmotion(csv, year=0, until=None, supplement=None):
@@ -113,7 +113,7 @@ def read_coinmotion(csv, year=0, until=None, supplement=None):
 
     rows = []
     for _, row in df.iterrows():
-        tx_type, asset, amount, unitvalue = _parse_row(row)
+        tx_type, asset, amount, unitvalue, subtype = _parse_row(row)
         if tx_type == "irrelevant":
             continue
         rows.append(
@@ -122,13 +122,14 @@ def read_coinmotion(csv, year=0, until=None, supplement=None):
                 "asset": asset,
                 "currency": "EUR",
                 "type": tx_type,
+                "subtype": subtype,
                 "amount": amount,
                 "unitvalue": unitvalue,
                 "source": "coinmotion",
             }
         )
 
-    cols = ["date", "asset", "currency", "type", "amount", "unitvalue", "source"]
+    cols = ["date", "asset", "currency", "type", "subtype", "amount", "unitvalue", "source"]
     result = pd.DataFrame(rows, columns=cols).sort_values("date", kind="stable")
 
     if supplement is not None:

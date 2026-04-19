@@ -102,8 +102,11 @@ def generate_combined_form(df: pd.DataFrame, transfers=None) -> pd.DataFrame:
                 f"({t['spend_date'].date()} {t['spend_amount']:.8g} {t['asset']})"
             )
 
+    mask = df["type"] == "buy"
+    if "subtype" in df.columns:
+        mask = mask & (df["subtype"] == "deposit")
     rows = []
-    for idx, row in df[df["type"] == "buy"].iterrows():
+    for idx, row in df[mask].iterrows():
         rows.append(
             {
                 "source": row.get("source", ""),

@@ -84,31 +84,31 @@ def _parse_row_bs(row):
         fee = _safe_float(row["Fee"])
         if subtype == "Buy":
             # Finnish tax: fee adds to acquisition cost.
-            return "buy", asset, amount, value + fee, None
+            return "buy", asset, amount, value + fee, "trade"
         if subtype == "Sell":
             # Finnish tax: fee deducted from proceeds.
-            return "sell", asset, amount, value - fee, None
+            return "sell", asset, amount, value - fee, "trade"
         return "irrelevant", None, None, None, None
 
     if tx_type == "Deposit":
         if _is_fiat(asset):
             return "irrelevant", None, None, None, None
         # Crypto deposit from external wallet — price looked up via rates.py.
-        return "buy", asset, amount, None, None
+        return "buy", asset, amount, None, "deposit"
 
     if tx_type == "Withdrawal":
         if _is_fiat(asset):
             return "irrelevant", None, None, None, None
-        return "spend", asset, amount, None, None
+        return "spend", asset, amount, None, "deposit"
 
     if tx_type == "Sub Account Transfer":
         # Direction encoded in Value field: "Main Account -> Faija" = spend,
         # "Faija -> Main Account" = buy on the main account.
         value_str = str(row["Value"]).strip() if pd.notna(row["Value"]) else ""
         if "Main Account ->" in value_str:
-            return "spend", asset, amount, None, None
+            return "spend", asset, amount, None, "deposit"
         if "-> Main Account" in value_str:
-            return "buy", asset, amount, None, None
+            return "buy", asset, amount, None, "deposit"
         return "irrelevant", None, None, None, None
 
     return "irrelevant", None, None, None, None
@@ -144,7 +144,7 @@ def read_bitstamp(csv, year=0, until=None):
 
     rows = []
     for _, row in df.iterrows():
-        tx_type, asset, amount, total_usd, _ = _parse_row_bs(row)
+        tx_type, asset, amount, total_usd, subtype = _parse_row_bs(row)
         if tx_type == "irrelevant":
             continue
 
@@ -166,13 +166,14 @@ def read_bitstamp(csv, year=0, until=None):
                 "asset": asset,
                 "currency": "EUR",
                 "type": tx_type,
+                "subtype": subtype,
                 "amount": amount,
                 "unitvalue": eur_uv,
                 "source": "bitstamp",
             }
         )
 
-    cols = ["date", "asset", "currency", "type", "amount", "unitvalue", "source"]
+    cols = ["date", "asset", "currency", "type", "subtype", "amount", "unitvalue", "source"]
     result = pd.DataFrame(rows, columns=cols).sort_values("date", kind="stable")
 
     if year and not result.empty:
