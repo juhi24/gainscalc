@@ -101,7 +101,7 @@ def report(cm_csv, bs_csv, supplement_path, year, output):
     """
     from gainscalc.tools import supplement as supp_mod
     from gainscalc.tools.gains import main as gains_main
-    from gainscalc.tools.multi import merge_sources
+    from gainscalc.tools.multi import detect_transfers, merge_sources, route_default_wallet
     from gainscalc.tools.cmotion import read_coinmotion
     from gainscalc.tools.bstamp import read_bitstamp
 
@@ -116,6 +116,8 @@ def report(cm_csv, bs_csv, supplement_path, year, output):
         raise click.UsageError("Provide at least one of --coinmotion or --bitstamp.")
 
     df = merge_sources(*dfs)
+    transfers = detect_transfers(df)
+    df = route_default_wallet(df, transfers)
 
     if supplement_path:
         loaded = supp_mod.load_supplement(supplement_path)
@@ -154,7 +156,7 @@ def supplement(cm_csv, bs_csv, max_hours, output):
     from gainscalc.tools.cmotion import read_coinmotion
     from gainscalc.tools.bstamp import read_bitstamp
     from gainscalc.tools.deposit_form import generate_combined_form
-    from gainscalc.tools.multi import detect_transfers, merge_sources
+    from gainscalc.tools.multi import detect_transfers, merge_sources, route_default_wallet
 
     dfs = []
     if cm_csv:
@@ -168,13 +170,14 @@ def supplement(cm_csv, bs_csv, max_hours, output):
 
     merged = merge_sources(*dfs)
     transfers = detect_transfers(merged, max_hours=max_hours)
+    routed = route_default_wallet(merged, transfers)
 
     if transfers:
         click.echo(f"Detected {len(transfers)} likely cross-exchange transfer(s).", err=True)
     else:
         click.echo("No cross-exchange transfers detected.", err=True)
 
-    form = generate_combined_form(merged, transfers=transfers)
+    form = generate_combined_form(routed, transfers=transfers)
 
     if output == "-":
         form.to_csv(sys.stdout, index=False)
