@@ -10,6 +10,8 @@ from gainscalc.rates import convertbook
 
 
 def select_year(df, year, datecol='date'):
+    if df.empty or datecol not in df.columns:
+        return pd.DataFrame(columns=[datecol, 'value'])
     cond1 = df[datecol] > datetime.datetime(year-1, 12, 31)
     cond2 = df[datecol] < datetime.datetime(year+1, 1, 1)
     return df[cond1 & cond2]
