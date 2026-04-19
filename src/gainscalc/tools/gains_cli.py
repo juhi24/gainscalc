@@ -48,6 +48,7 @@ def _write_book(pairs, year, output_path):
         book = pair.xc.book.copy()
         if book.empty:
             continue
+        book["selldate"] = pd.to_datetime(book["selldate"])
         year_book = book[book["selldate"].dt.year == year]
         if year_book.empty:
             continue
