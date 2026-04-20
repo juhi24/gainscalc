@@ -162,7 +162,9 @@ def gains():
               help="Calendar year to report gains for.")
 @click.option("--output", "-o", default=None, metavar="OUTPUT",
               help="Write lot-level detail to this CSV file.")
-def report(cm_csv, bs_csv, supplement_path, year, output):
+@click.option("--pdf-dir", "pdf_dir", default=None, metavar="DIR",
+              help="Write OmaVero attachment PDFs (profits + losses) to this directory.")
+def report(cm_csv, bs_csv, supplement_path, year, output, pdf_dir):
     """Compute capital gains from one or more exchange transaction CSVs.
 
     Processes the full transaction history for correct FIFO cost basis and
@@ -200,6 +202,10 @@ def report(cm_csv, bs_csv, supplement_path, year, output):
 
     if output:
         _write_book(pairs, year, output)
+
+    if pdf_dir:
+        from gainscalc.tools.pdf_report import generate_pdfs
+        generate_pdfs(pairs, year, pdf_dir)
 
 
 # ---------------------------------------------------------------------------
