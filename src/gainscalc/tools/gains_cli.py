@@ -42,6 +42,66 @@ def _print_report(pairs, year):
     return grand_total
 
 
+def _tax_summary(pairs, year):
+    totals = {
+        "profit_proceeds": 0.0, "profit_cost": 0.0,
+        "loss_proceeds":   0.0, "loss_cost":   0.0,
+    }
+    for pair in pairs:
+        book = pair.xc.book.copy()
+        if book.empty:
+            continue
+        book["selldate"] = pd.to_datetime(book["selldate"])
+        book["buyvalue"]  = book["buyvalue"].astype(float)
+        book["sellvalue"] = book["sellvalue"].astype(float)
+        yb = book[book["selldate"].dt.year == year]
+        if yb.empty:
+            continue
+        p = yb[yb["sellvalue"] >= yb["buyvalue"]]
+        l = yb[yb["sellvalue"] <  yb["buyvalue"]]
+        totals["profit_proceeds"] += p["sellvalue"].sum()
+        totals["profit_cost"]     += p["buyvalue"].sum()
+        totals["loss_proceeds"]   += l["sellvalue"].sum()
+        totals["loss_cost"]       += l["buyvalue"].sum()
+    return totals
+
+
+def _fi(value):
+    """Format a float as a Finnish locale number: 33 499,96"""
+    s = f"{abs(value):,.2f}".replace(",", "\u00a0").replace(".", ",")
+    return f"-{s}" if value < 0 else s
+
+
+def _print_tax_summary(pairs, year):
+    t = _tax_summary(pairs, year)
+    profit = t["profit_proceeds"] - t["profit_cost"]
+    loss   = t["loss_proceeds"]   - t["loss_cost"]
+
+    sep = "  " + "\u2500" * 33
+    w = 14
+
+    print(f"\n=== OmaVero-yhteenveto {year} ===\n")
+
+    if t["profit_proceeds"] > 0:
+        print("Voitolliset myynnit:")
+        print(f"  {'Luovutushinta:':<20} {_fi(t['profit_proceeds']):>{w}} EUR")
+        print(f"  {'Hankintameno:':<20} {_fi(t['profit_cost']):>{w}} EUR")
+        print(sep)
+        print(f"  {'Voitto:':<20} {_fi(profit):>{w}} EUR\n")
+
+    if t["loss_proceeds"] > 0:
+        print("Tappiolliset myynnit:")
+        print(f"  {'Luovutushinta:':<20} {_fi(t['loss_proceeds']):>{w}} EUR")
+        print(f"  {'Hankintameno:':<20} {_fi(t['loss_cost']):>{w}} EUR")
+        print(sep)
+        print(f"  {'Tappio:':<20} {_fi(loss):>{w}} EUR\n")
+
+    print(
+        "Kulut (osto- ja myyntipalkkiot) on sisällytetty hankintamenoon ja\n"
+        "luovutushintaan \u2014 OmaVeron kulukenttiin voi merkitä 0.\n"
+    )
+
+
 def _write_book(pairs, year, output_path):
     frames = []
     for pair in pairs:
@@ -60,12 +120,11 @@ def _write_book(pairs, year, output_path):
         combined["amount"] = combined["amount"].astype(float).apply(
             lambda x: f"{x:.8f}"
         )
-        combined["buyvalue"] = combined["buyvalue"].astype(float).apply(
-            lambda x: f"{x:.2f}"
-        )
-        combined["sellvalue"] = combined["sellvalue"].astype(float).apply(
-            lambda x: f"{x:.2f}"
-        )
+        bv = combined["buyvalue"].astype(float)
+        sv = combined["sellvalue"].astype(float)
+        combined["buyvalue"]  = bv.apply(lambda x: f"{x:.2f}")
+        combined["sellvalue"] = sv.apply(lambda x: f"{x:.2f}")
+        combined["gain"]      = (sv - bv).apply(lambda x: f"{x:.2f}")
         combined.to_csv(output_path, index=False)
         click.echo(f"Wrote lot detail ({len(combined)} rows) to {output_path}", err=True)
     else:
@@ -137,6 +196,7 @@ def report(cm_csv, bs_csv, supplement_path, year, output):
     gains_main(df, pairs)
 
     _print_report(pairs, year)
+    _print_tax_summary(pairs, year)
 
     if output:
         _write_book(pairs, year, output)
